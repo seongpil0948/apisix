@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudFormation template for an HA Apache APISIX cluster (Docker on CentOS8/AMI),
+  using an Auto Scaling Group and optional Route53 Weighted DNS.
+
+Parameters:
+  HostedZoneName:
+    Type: String
+    Default: dwoong.com.
+    Description: "Route53 Hosted Zone Name (must include trailing dot)"
+
+  ApisixRecordName:
+    Type: String
+    Default: gw.dwoong.com.
+    Description: "DNS record for APISIX (Weighted Routing)"
+
+Resources:
+  ApisixHealthCheck1:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        IPAddress: "34.120.177.193"
+        Port: 80
+        Type: HTTP
+        ResourcePath: "/"
+        RequestInterval: 30
+        FailureThreshold: 3
+        FullyQualifiedDomainName: "grafana.com"
+      HealthCheckTags:
+        - Key: Name
+          Value: "APISIX-Node1-HealthCheck"
+
+  ApisixHealthCheck2:
+    Type: AWS::Route53::HealthCheck
+    Properties:
+      HealthCheckConfig:
+        IPAddress: "142.251.36.14" # google.com 중 하나 (실제 환경에서는 다른 고정 IP 권장)
+        Port: 80
+        Type: HTTP
+        ResourcePath: "/"
+        RequestInterval: 30
+        FailureThreshold: 3
+        FullyQualifiedDomainName: "google.com"
+      HealthCheckTags:
+        - Key: Name
+          Value: "APISIX-Node2-HealthCheck"
+
+  ApisixRecordSet1:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Ref HostedZoneName
+      Name: !Ref ApisixRecordName
+      Type: A
+      SetIdentifier: "APISIX-Node-1"
+      Weight: 50
+      TTL: "60"
+      ResourceRecords:
+        - "34.120.177.193"
+      HealthCheckId: !Ref ApisixHealthCheck1
+
+  ApisixRecordSet2:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Ref HostedZoneName
+      Name: !Ref ApisixRecordName
+      Type: A
+      SetIdentifier: "APISIX-Node-2"
+      Weight: 50
+      TTL: "60"
+      ResourceRecords:
+        - "142.251.36.14"
+      HealthCheckId: !Ref ApisixHealthCheck2

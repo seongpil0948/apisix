@@ -1,0 +1,259 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudFormation template for an HA Apache APISIX cluster (Docker on CentOS8/AMI),
+  using an Auto Scaling Group and optional Route53 Weighted DNS.
+
+Parameters:
+  VPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: ID of the VPC where resources will be deployed
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of Subnet IDs for the Auto Scaling group
+
+  EtcdHosts:
+    Type: String
+    Description: "Comma-separated list of ETCD hosts"
+    Default: "etcd-EtcdNLB-4bbc0961cb6e07b5.elb.ap-northeast-2.amazonaws.com:2379"
+
+  AMIId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI ID to use for the APISIX EC2 instances
+    Default: ami-07c33d2197ac9fe9c
+
+  ApisixInstanceType:
+    Type: String
+    Default: t3.small
+    Description: EC2 instance type for APISIX
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+
+  ApisixDesiredCapacity:
+    Type: Number
+    Default: 2
+    AllowedValues:
+      - 1
+      - 2
+      - 3
+    Description: Desired number of APISIX EC2 instances in the Auto Scaling group
+
+Resources:
+  # ----------------------------------------------------
+  #  IAM Role & Instance Profile for Systems Manager (옵션)
+  # ----------------------------------------------------
+  ManagedInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ssm.amazonaws.com
+                - ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonSSMDirectoryServiceAccess
+        - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
+        - arn:aws:iam::aws:policy/AmazonSSMPatchAssociation
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+      Path: "/"
+      Tags:
+        - Key: Name
+          Value: ManagedInstanceRole
+
+  ManagedInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref ManagedInstanceRole
+      InstanceProfileName: !Sub "${AWS::StackName}-InstanceProfile"
+
+  # ----------------------------------------------------
+  #  Security Group for APISIX
+  # ----------------------------------------------------
+  ApisixSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for APISIX nodes
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        # HTTP
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 9080
+          ToPort: 9080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 9180
+          ToPort: 9180
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 9090
+          ToPort: 9090
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: ApisixSecurityGroup
+
+  # ----------------------------------------------------
+  #  APISIX Launch Template
+  # ----------------------------------------------------
+  ApisixLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub "${AWS::StackName}-ApisixLaunchTemplate"
+      LaunchTemplateData:
+        ImageId: !Ref AMIId
+        InstanceType: !Ref ApisixInstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt ManagedInstanceProfile.Arn
+        NetworkInterfaces:
+          - DeviceIndex: 0
+            AssociatePublicIpAddress: true
+            Groups:
+              - !Ref ApisixSecurityGroup
+        UserData:
+          # /usr/local/apisix/conf/config.yaml
+          # sudo docker exec -it ab3741503d6b /bin/bash
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            # CentOS 7에 Docker 설치
+            yum update -y
+            yum install -y amazon-ssm-agent
+            systemctl enable amazon-ssm-agent
+            systemctl start amazon-ssm-agent
+
+            amazon-linux-extras install docker -y
+            systemctl enable docker
+            systemctl start docker
+
+            docker run -d --name httpbin -p 9090:80 kennethreitz/httpbin
+
+            cat <<EOF > $(pwd)/config.yaml
+apisix:
+  node_listen:
+    - port: 9080
+
+deployment:
+  role: traditional
+  role_traditional:
+    config_provider: etcd
+  etcd:
+    host:
+      - "http://43.203.178.241:2379"
+    prefix: "/apisix"
+    timeout: 30
+  admin:
+    enable_admin_cors: true
+    admin_api_version: v3
+    admin_key_required: true  
+    admin_key:
+      - name: admin
+        key: "12345"
+        role: admin
+    allow_admin:
+      - 0.0.0.0/0
+    admin_listen:
+      ip: 0.0.0.0
+      port: 9180
+EOF
+
+            chmod 777 $(pwd)/config.yaml
+            docker run -d --rm \
+              --name apisix \
+              -p 9080:9080 \
+              -p 80:9080 \
+              -p 443:9080 \
+              -p 9180:9180 \
+              -v $(pwd)/config.yaml:/usr/local/apisix/conf/config.yaml \
+              apache/apisix:latest
+
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub "${AWS::StackName}-ApisixInstance"
+
+  # ----------------------------------------------------
+  #  APISIX Auto Scaling Group
+  # ----------------------------------------------------
+  ApisixAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Ref SubnetIds
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ApisixLaunchTemplate
+        Version: !GetAtt ApisixLaunchTemplate.LatestVersionNumber
+      MinSize: !Ref ApisixDesiredCapacity
+      MaxSize: !Ref ApisixDesiredCapacity
+      DesiredCapacity: !Ref ApisixDesiredCapacity
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 300
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-Apisix-ASG-Instance"
+          PropagateAtLaunch: true
+
+  # ----------------------------------------------------
+  # AutoScaling Policies (옵션)
+  # ----------------------------------------------------
+  ApisixScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref ApisixAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 60.0
+      EstimatedInstanceWarmup: 300
+
+  # ApisixScaleDownPolicy:
+  #   Type: AWS::AutoScaling::ScalingPolicy
+  #   Properties:
+  #     AutoScalingGroupName: !Ref ApisixAutoScalingGroup
+  #     PolicyType: TargetTrackingScaling
+  #     TargetTrackingConfiguration:
+  #       PredefinedMetricSpecification:
+  #         PredefinedMetricType: ASGAverageCPUUtilization
+  #       TargetValue: 30.0
+  #     EstimatedInstanceWarmup: 30000
+
+Outputs:
+  ApisixAutoScalingGroupName:
+    Description: Name of the APISIX Auto Scaling Group
+    Value: !Ref ApisixAutoScalingGroup
+
+  ApisixLaunchTemplateId:
+    Description: ID of the APISIX Launch Template
+    Value: !Ref ApisixLaunchTemplate
+
+  ManagedInstanceRoleArn:
+    Description: ARN of the Managed Instance Role
+    Value: !GetAtt ManagedInstanceRole.Arn

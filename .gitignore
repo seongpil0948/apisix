@@ -1,0 +1,24 @@
+# Ignore .DS_Store files
+.DS_Store
+
+# Ignore Visual Studio Code settings
+.vscode/
+
+# Ignore Docker data and configuration files
+docker/etcd_data/
+docker/apisix_conf/config.yaml
+
+# Ignore log files
+logs/
+*.log
+
+# Ignore temporary files
+*.tmp
+*.swp
+
+# Ignore node_modules
+node_modules/
+
+# Ignore build output
+dist/
+build/
