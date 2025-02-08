@@ -1,0 +1,32 @@
+apisix:
+  # 클라이언트 요청 수신 포트 설정
+  node_listen:
+    - port: 9080
+  # (옵션) SSL/TLS 포트 설정 – 필요 시 주석 해제하여 사용 가능
+  # node_listen_ssl:
+  #   - port: 9443
+
+deployment:
+  role: traditional
+  role_traditional:
+    config_provider: etcd
+  etcd:
+    # 고가용성을 위해 두 서버의 etcd 엔드포인트 모두 지정
+    host:
+      - "http://10.101.99.100:2379"
+      - "http://10.101.99.101:2379"
+    prefix: "/apisix"
+    timeout: 30 # etcd 응답 타임아웃(초 단위)
+  admin:
+    enable_admin_cors: true # Dashboard 연동 등에서 CORS 허용
+    admin_api_version: v3 # Admin API 버전 v3 사용
+    admin_key_required: true # Admin API 접근 시 키 필요
+    admin_key:
+      - name: admin
+        key: "12345" # 실제 운영 환경에서는 보다 복잡한 값으로 변경할 것
+        role: admin
+    allow_admin:
+      - 0.0.0.0/0 # 필요 시 특정 IP 범위로 제한 가능
+    admin_listen:
+      ip: 0.0.0.0
+      port: 9180
