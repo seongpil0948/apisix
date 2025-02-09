@@ -23,7 +23,7 @@ deployment:
     admin_key_required: true # Admin API 접근 시 키 필요
     admin_key:
       - name: admin
-        key: "12345" # 실제 운영 환경에서는 보다 복잡한 값으로 변경할 것
+        key: "1234qwer!!" # 실제 운영 환경에서는 보다 복잡한 값으로 변경할 것
         role: admin
     allow_admin:
       - 0.0.0.0/0 # 필요 시 특정 IP 범위로 제한 가능

@@ -67,8 +67,6 @@ plugins:
 APISIX 3.x부터는 **public-api** 플러그인을 이용해 “APISIX 내부 루트(/apisix/...)”를 외부(9080)로 공개할 수 있습니다.
 
 ```bash
-# 1) 관리자 key (admin_key) 가져오기
-admin_key=$(yq '.deployment.admin.admin_key[0].key' conf/config.yaml | sed 's/"//g')
 
 # 2) /apisix/prometheus/metrics 노출용 라우트 생성
 curl -X PUT "http://127.0.0.1:9180/apisix/admin/routes/900" \

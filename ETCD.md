@@ -90,6 +90,14 @@ ec del /test/message
 
 삭제 후, 다시 get 명령어로 확인하여 데이터가 제거되었는지 점검합니다.
 
+#### 3.4. 전체 키와 값 조회
+```bash
+ec get --prefix --keys-only /apisix
+
+```
+
+
+
 ---
 
 ## 4. 추가 테스트 방법

@@ -1,5 +1,5 @@
+# https://github.com/apache/apisix-dashboard/blob/master/api/conf/conf.yaml
 conf:
-  # Dashboard(Manager API) 서버 리스닝 설정
   listen:
     host: 0.0.0.0 # 모든 인터페이스에서 수신
     port: 9000 # Dashboard 포트
@@ -8,22 +8,24 @@ conf:
     endpoints:
       - "http://10.101.99.100:2379"
       - "http://10.101.99.101:2379"
-    # etcd 기본 인증 사용 시 주석 해제하여 사용
     # username: "root"
     # password: "123456"
   log:
     error_log:
-      level: warn # 로그 레벨 (debug < info < warn < error < panic < fatal)
+      level: warn # supports levels, lower to higher: debug, info, warn, error, panic, fatal
       file_path:
-        - "logs/error.log" # 로그 파일 경로 (절대 경로나 /dev/stdout 등으로 지정 가능)
+        logs/error.log # supports relative path, absolute path, standard output
+        # such as: logs/error.log, /tmp/logs/error.log, /dev/stdout, /dev/stderr
+        # such as absolute path on Windows: winfile:///C:\error.log
+    access_log:
+      file_path: logs/access.log
 
 authentication:
-  # JWT 기반 인증을 통한 Dashboard 접근 보호
   secret: "ids-secret-string" # 반드시 안전한 임의 문자열로 변경할 것
   expire_time: 3600 # JWT 토큰 만료 시간(초)
   users:
     - username: admin # 관리자 계정 (Dashboard 로그인용)
-      password: admin
+      password: 1234qwer!!
     - username: user
       password: user
 
