@@ -1,10 +1,6 @@
 apisix:
-  # 클라이언트 요청 수신 포트 설정
   node_listen:
     - port: 9080
-  # (옵션) SSL/TLS 포트 설정 – 필요 시 주석 해제하여 사용 가능
-  # node_listen_ssl:
-  #   - port: 9443
 
 deployment:
   role: traditional
