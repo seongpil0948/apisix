@@ -26,3 +26,34 @@ deployment:
     admin_listen:
       ip: 0.0.0.0
       port: 9180
+
+
+plugin_attr:
+  # Prometheus 모니터링 설정
+  prometheus:
+    export_addr:
+      ip: "0.0.0.0"
+      port: 9091
+
+plugins:
+  - authz-keycloak
+  - aws-lambda
+  - basic-auth
+  - cors
+  - echo
+  - ext-plugin-post-req
+  - ext-plugin-post-resp
+  - ext-plugin-pre-req
+  - file-logger
+  - forward-auth
+  - jwt-auth
+  - kafka-logger
+  - kafka-proxy
+  - log-rotate
+  - node-status
+  - opentelemetry
+  - prometheus
+  - public-api
+  - serverless-post-function
+  - serverless-pre-function
+  - syslog

@@ -29,33 +29,97 @@ authentication:
     - username: user
       password: user
 
-plugin_attr:
-  # Prometheus 모니터링 설정
-  prometheus:
-    export_addr:
-      ip: "0.0.0.0"
-      port: 9091
+
+oidc:
+  enabled: false
+  expire_time: 3600
+  client_id: dashboard
+  client_secret: dashboard
+  auth_url: http://172.17.0.1:8080/auth/realms/master/protocol/openid-connect/auth
+  token_url: http://172.17.0.1:8080/auth/realms/master/protocol/openid-connect/token
+  user_info_url: http://172.17.0.1:8080/auth/realms/master/protocol/openid-connect/userinfo
+  redirect_url: http://127.0.0.1:9000/apisix/admin/oidc/callback
+  scope: openid
 
 plugins:
   - api-breaker
+  - authz-casbin
+  - authz-casdoor
   - authz-keycloak
   - aws-lambda
+  - azure-functions
   - basic-auth
+  # - batch-requests
+  - clickhouse-logger
+  - client-control
+  - consumer-restriction
   - cors
+  - csrf
+  - datadog
+  # - dubbo-proxy
   - echo
+  - error-log-logger
+  # - example-plugin
   - ext-plugin-post-req
   - ext-plugin-post-resp
   - ext-plugin-pre-req
+  - fault-injection
   - file-logger
   - forward-auth
+  - google-cloud-logging
+  - grpc-transcode
+  - grpc-web
+  - gzip
+  - hmac-auth
+  - http-logger
+  - ip-restriction
   - jwt-auth
   - kafka-logger
   - kafka-proxy
-  - log-rotate
-  - node-status
+  - key-auth
+  - ldap-auth
+  - limit-conn
+  - limit-count
+  - limit-req
+  - loggly
+  # - log-rotate
+  - mocking
+  # - node-status
+  - opa
+  - openid-connect
   - opentelemetry
+  - openwhisk
   - prometheus
+  - proxy-cache
+  - proxy-control
+  - proxy-mirror
+  - proxy-rewrite
   - public-api
+  - real-ip
+  - redirect
+  - referer-restriction
+  - request-id
+  - request-validation
+  - response-rewrite
+  - rocketmq-logger
+  - server-info
   - serverless-post-function
   - serverless-pre-function
+  - skywalking
+  - skywalking-logger
+  - sls-logger
+  - splunk-hec-logging
   - syslog
+  - tcp-logger
+  - traffic-split
+  - ua-restriction
+  - udp-logger
+  - uri-blocker
+  - wolf-rbac
+  - zipkin
+  - elasticsearch-logge
+  - openfunction
+  - tencent-cloud-cls
+  - ai
+  - cas-auth
+

@@ -54,10 +54,31 @@ curl -X PUT \
             "limit-count": {
                 "time_window": 60,
                 "policy": "local",
-                "count": 2,
+                "count": 20,
                 "key": "remote_addr",
                 "rejected_code": 503
             }
         }
     }'
+```
+```bash
+curl -X PUT \
+  http://10.101.99.100:9180/apisix/admin/global_rules/2 \
+  -H 'Content-Type: application/json' \
+  -H "X-API-KEY: $admin_key" \
+  -d '{
+        "plugins": {
+            "prometheus": {},
+            "public-api": {}
+        }
+    }'
+```
+
+#### 검증
+```bash
+curl -i http://10.101.99.100:9091/apisix/prometheus/metrics
+curl -i http://10.101.99.101:9091/apisix/prometheus/metrics
+
+curl -i http://10.101.99.100:9080/apisix/status
+curl -i http://10.101.99.101:9080/apisix/status
 ```
