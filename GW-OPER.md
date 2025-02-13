@@ -4,7 +4,7 @@
 
 ## Route 관리
 
-#### 신규 Route 추가
+### 신규 Route 추가 (https)
 
 ```bash
 curl -i "http://10.101.99.101:9180/apisix/admin/routes" -H "X-API-KEY: $admin_key"  -X PUT -d '
@@ -22,6 +22,66 @@ curl -i "http://10.101.99.101:9180/apisix/admin/routes" -H "X-API-KEY: $admin_ke
   }
 }'
 
+
+# "regex_uri": ["^/flower(.*)", "$1"]
+# "hosts": [
+#   "flower.dwoong.com"
+# ],
+```
+
+```bash
+curl -i "http://10.101.99.101:9180/apisix/admin/routes/553448796621636287" \
+     -H "X-API-KEY: $admin_key" \
+     -X PUT \
+     -d '{
+  "uri": "/flower/*",
+  "name": "connect-flower",
+  "desc": "monitoring airflow worker",
+  "labels": {
+    "app": "flower",
+    "API_VERSION": "v1",
+    "ns": "airflow",
+    "project": "connect"
+  },
+  "status": 1,
+  "plugins": {
+    "proxy-rewrite": {
+      "regex_uri": [
+        "^/flower/(.*)",
+        "/$1"
+      ]
+    }
+  },
+  "upstream": {
+    "type": "chash",
+    "hash_on": "vars",
+    "key": "remote_addr",
+    "scheme": "http",
+    "pass_host": "pass",
+    "nodes": {
+      "10.101.99.96:5555": 1,
+      "10.101.99.95:5555": 1
+    },
+    "timeout": {
+      "send": 6,
+      "connect": 6,
+      "read": 6
+    },
+    "keepalive_pool": {
+      "idle_timeout": 60,
+      "requests": 1000,
+      "size": 320
+    }
+  }
+}'
+
+```
+
+#### 조회
+```bash
+
+curl -i "http://10.101.99.101:9180/apisix/admin/routes/553448796621636287" -H "X-API-KEY: $admin_key"  -X GET
+
 ```
 
 #### 추가한 Route 확인
@@ -29,7 +89,104 @@ curl -i "http://10.101.99.101:9180/apisix/admin/routes" -H "X-API-KEY: $admin_ke
 ```bash
 for i in {1..10}; do curl "http://10.101.99.101:9180/headers" ; done
 
-hc=$(seq 100 | xargs -I {} curl "http://10.101.99.101:9080/headers" -sL | grep "httpbin" | wc -l); echo httpbin.org: $hc, mock.api7.ai: $((100 - $hc))
+hc=$(seq 100 | xargs -I {} curl "http://10.101.99.101:9180/headers" -sL | grep "httpbin" | wc -l); echo httpbin.org: $hc, mock.api7.ai: $((100 - $hc))
+```
+
+```bash
+curl -i -H "Host: flower.dwoong.com" http://localhost:9080/flower
+curl -i -H "Host: flower.dwoong.com" http://localhost:9080/flower/
+```
+
+---
+
+### Route 추가 (Upstream, TCP) with Redis
+
+#### stream proxy 설정
+```bash
+  stream_proxy:
+    tcp:
+      - 6380 # listen on 9100 ports of all network interfaces for TCP requests
+      - "127.0.0.1:6380"
+```
+
+#### Upstream 추가
+
+```
+curl -X PUT http://10.101.99.101:9180/apisix/admin/upstreams/1 \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: $admin_key" \
+  -d '{
+    "name": "redis",
+    "nodes": {
+      "10.101.99.97:7000": 1,
+      "10.101.99.98:7001": 1,
+      "10.101.99.99:7002": 1,
+      "10.101.99.97:7003": 1,
+      "10.101.99.98:7004": 1,
+      "10.101.99.99:7005": 1
+    },
+    "type": "chash",         
+    "key": "remote_addr",   
+    "retries": 3,
+    "timeout": {
+      "connect": 5,
+      "read": 5,
+      "send": 5
+    },
+    "checks": {
+      "active": {
+        "type": "tcp",
+        "healthy": {
+          "interval": 2,
+          "successes": 2
+        },
+        "unhealthy": {
+          "interval": 2,
+          "tcp_failures": 3,
+          "timeouts": 3
+        }
+      }
+    }
+  }'
+
+
+```
+
+#### TCP Route 추가
+```
+curl -X PUT http://10.101.99.100:9180/apisix/admin/stream_routes/1 \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: $admin_key" \
+  -d '{
+    "upstream_id": "1",
+    "server_port": 6380
+  }'
+
+```
+
+#### TCP Route 삭제
+
+```bash
+curl -X DELETE http://10.101.99.100:9180/apisix/admin/stream_routes/1 \
+  -H "Content-Type: application/json" \
+  -H "X-API-KEY: $admin_key" 
+
+#### 추가한 Route 확인
+
+```bash
+HOST=10.101.99.100
+for i in {1..10}; do \
+  nc -zv $HOST 6380 <<< "PING"; \
+done
+HOST=0.0.0.0
+for i in {1..3}; do \
+  redis-cli  -h $HOST -p 6380 PING; \
+  redis-cli  -h $HOST -p 6380 SET key$i value$i; \
+done
+
+
+redis-cli  -h 10.101.99.98 -p 7001 PING
+redis-cli  -h 10.101.99.100 -p 6380 PING
 ```
 
 
@@ -68,8 +225,7 @@ curl -X PUT \
   -H "X-API-KEY: $admin_key" \
   -d '{
         "plugins": {
-            "prometheus": {},
-            "public-api": {}
+            "prometheus": {}
         }
     }'
 ```

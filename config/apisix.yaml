@@ -1,6 +1,14 @@
 apisix:
+  proxy_mode: http&stream
   node_listen:
-    - port: 9080
+    - port: 9080      # HTTP 트래픽 처리
+  stream_proxy:
+    tcp:
+      - 6380 # listen on 9100 ports of all network interfaces for TCP requests
+      - "127.0.0.1:6380"
+    # udp:
+    #   - 9200 # listen on 9200 ports of all network interfaces for UDP requests
+    #   - "127.0.0.1:9211"
 
 deployment:
   role: traditional
@@ -57,3 +65,4 @@ plugins:
   - serverless-post-function
   - serverless-pre-function
   - syslog
+  - proxy-rewrite
