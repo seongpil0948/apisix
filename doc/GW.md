@@ -30,6 +30,7 @@ docker run -d \
     -v /shared/etcd/data/etcd1:/bitnami/etcd \
     -v ($HOME)/logs/apisix:/usr/local/apisix/logs \
     -v /shared/scm/apisix/config/apisix.yaml:/usr/local/apisix/conf/config.yaml \
+    -v /shared/scm/apissix-plugin-lua:/usr/local/apissix-plugin-lua \
     apache/apisix:latest
 ```
 

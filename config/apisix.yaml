@@ -9,6 +9,9 @@ apisix:
     # udp:
     #   - 9200 # listen on 9200 ports of all network interfaces for UDP requests
     #   - "127.0.0.1:9211"
+  # lua_module_hook: "my_hook" # 사용자 정의 Lua 모듈 이름
+  # extra_lua_path:
+  #   - "/usr/local/apissix-plugin-lua/?.lua"    
 
 deployment:
   role: traditional
@@ -80,4 +83,7 @@ plugins:
   - serverless-post-function
   - serverless-pre-function
   - syslog
+  # - 3rd-party
+
+
   
