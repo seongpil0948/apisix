@@ -35,6 +35,18 @@ deployment:
       ip: 0.0.0.0
       port: 9180
 
+discovery:
+  eureka:
+    host:
+      - "http://10.101.99.102:8761"
+    prefix: "/eureka/"
+    fetch_interval: 30               # 30s
+    weight: 100                      # default weight for node
+    timeout:
+      connect: 2000                  # 2000ms
+      send: 2000                     # 2000ms
+      read: 5000                     # 5000ms
+
 
 plugin_attr:
   # Prometheus 모니터링 설정
@@ -61,8 +73,11 @@ plugins:
   - node-status
   - opentelemetry
   - prometheus
+  - proxy-rewrite
   - public-api
+  - response-rewrite
+  - request-validation  
   - serverless-post-function
   - serverless-pre-function
   - syslog
-  - proxy-rewrite
+  

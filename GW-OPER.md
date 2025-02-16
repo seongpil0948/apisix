@@ -238,3 +238,12 @@ curl -i http://10.101.99.101:9091/apisix/prometheus/metrics
 curl -i http://10.101.99.100:9080/apisix/status
 curl -i http://10.101.99.101:9080/apisix/status
 ```
+
+
+## Eureka 연동
+The diagnostic interface is exposed on port 9090 of the loopback interface by default, and the access method is GET /v1/discovery/{discovery_type}/dump, for example:
+```bash
+
+curl http://localhost:9090/v1/discovery/eureka/dump
+
+```

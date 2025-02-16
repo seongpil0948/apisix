@@ -1,14 +1,34 @@
+## 구성
+
+#### 특징
+- `/shared` 경로를 NFS로 모든 인스턴스는 코드와 파일을 공유 중
+- 각 서버는 apisix gateway와 dashboard를 실행하며 ETCD Cluster를 사용하여 설정을 공유
+
+- GW-PROD-1: ETCD(2), APISIX(1), Dashboard(1)
+- GW-PROD-2: ETCD(3), APISIX(1), Dashboard(1)
+
+#### 서버 정보
+```
+Host GW-PROD-1
+    HostName 10.101.99.100
+    User develop
+
+Host GW-PROD-2
+    HostName 10.101.99.101
+    User develop
+
+```
 
 ## 컨테이너 구동동
 
 ### APISIX Gateway 실행 (Docker)
-
 
 ```bash
 docker run -d \
     --restart unless-stopped \
     --net="host" \
     -v /shared/etcd/data/etcd1:/bitnami/etcd \
+    -v ($HOME)/logs/apisix:/usr/local/apisix/logs \
     -v /shared/scm/apisix/config/apisix.yaml:/usr/local/apisix/conf/config.yaml \
     apache/apisix:latest
 ```
@@ -20,6 +40,7 @@ docker run -d \
   --restart unless-stopped \
   -p 9000:9000 \
   -v /shared/scm/apisix/config/dashboard.yaml:/usr/local/apisix-dashboard/conf/conf.yaml \
+  -v ($HOME)/logs/apisix-dashboard:/usr/local/apisix-dashboard/logs \
   apache/apisix-dashboard:latest
 ```
 
