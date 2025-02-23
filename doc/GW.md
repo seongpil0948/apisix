@@ -24,12 +24,24 @@ Host GW-PROD-2
 ### APISIX Gateway 실행 (Docker)
 
 ```bash
-docker run -d \
+mkdir -p $HOME/logs/apisix 
+sudo chmod -R 777 $HOME/logs/apisix
+rm $HOME/logs/apisix/*.sock
+
+docker run -d   \
     --restart unless-stopped \
-    --net="host" \
+    -p 80:9080 \
+    -p 9080:9080 \
+    -p 9081:9081 \
+    -p 9082:9082 \
+    -p 6380:6380 \
+    -p 9200:9200 \
+    -p 443:9443 \
+    -p 9091:9091 \
     -v /shared/etcd/data/etcd1:/bitnami/etcd \
-    -v ($HOME)/logs/apisix:/usr/local/apisix/logs \
+    -v $HOME/logs/apisix:/usr/local/apisix/logs \
     -v /shared/scm/apisix/config/apisix.yaml:/usr/local/apisix/conf/config.yaml \
+    -v /shared/scm/apisix/config/debug.yaml:/usr/local/apisix/conf/debug.yaml \
     -v /shared/scm/apissix-plugin-lua:/usr/local/apissix-plugin-lua \
     apache/apisix:latest
 ```

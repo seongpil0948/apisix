@@ -114,6 +114,8 @@ docker run -d \
   -p 2379:2379 \
   -p 2380:2380 \
   -v /shared/etcd/data/etcd1:/bitnami/etcd \
+  -v /shared/etcd/snapshot/etcd1:/snapshots \
+  -v /shared/etcd/snapshot-init/etcd1:/init-snapshot \
   -e ETCD_NAME="etcd1" \
   -e ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379" \
   -e ETCD_ADVERTISE_CLIENT_URLS="http://10.101.99.100:2379" \
@@ -123,6 +125,8 @@ docker run -d \
   -e ETCD_INITIAL_CLUSTER_STATE="new" \
   -e ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-1" \
   -e ETCD_ROOT_PASSWORD="1234qwer!!" \
+  -e ALLOW_NONE_AUTHENTICATION=yes \
+
   bitnami/etcd:3.5.18
 ```
 
@@ -135,6 +139,8 @@ docker run -d \
   -p 3379:2379 \
   -p 3380:2380 \
   -v /shared/etcd/data/etcd2:/bitnami/etcd \
+  -v /shared/etcd/snapshot/etcd2:/snapshots \
+  -v /shared/etcd/snapshot-init/etcd2:/init-snapshot \  
   -e ETCD_NAME="etcd2" \
   -e ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379" \
   -e ETCD_ADVERTISE_CLIENT_URLS="http://10.101.99.100:3379" \
@@ -144,6 +150,7 @@ docker run -d \
   -e ETCD_INITIAL_CLUSTER_STATE="new" \
   -e ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-1" \
   -e ETCD_ROOT_PASSWORD="1234qwer!!" \
+  -e ALLOW_NONE_AUTHENTICATION=yes \
   bitnami/etcd:3.5.18
 ```
 
@@ -162,6 +169,8 @@ docker run -d \
   -p 2379:2379 \
   -p 2380:2380 \
   -v /shared/etcd/data/etcd3:/bitnami/etcd \
+  -v /shared/etcd/snapshot/etcd3:/snapshots \
+  -v /shared/etcd/snapshot-init/etcd3:/init-snapshot \  
   -e ETCD_NAME="etcd3" \
   -e ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379" \
   -e ETCD_ADVERTISE_CLIENT_URLS="http://10.101.99.101:2379" \
@@ -171,6 +180,7 @@ docker run -d \
   -e ETCD_INITIAL_CLUSTER_STATE="new" \
   -e ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-1" \
   -e ETCD_ROOT_PASSWORD="1234qwer!!" \
+  -e ALLOW_NONE_AUTHENTICATION=yes \
   bitnami/etcd:3.5.18
 ```
 
@@ -183,6 +193,8 @@ docker run -d \
   -p 3379:2379 \
   -p 3380:2380 \
   -v /shared/etcd/data/etcd4:/bitnami/etcd \
+  -v /shared/etcd/snapshot/etcd4:/snapshots \
+  -v /shared/etcd/snapshot-init/etcd4:/init-snapshot \  
   -e ETCD_NAME="etcd4" \
   -e ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379" \
   -e ETCD_ADVERTISE_CLIENT_URLS="http://10.101.99.101:3379" \
@@ -192,6 +204,7 @@ docker run -d \
   -e ETCD_INITIAL_CLUSTER_STATE="new" \
   -e ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-1" \
   -e ETCD_ROOT_PASSWORD="1234qwer!!" \
+  -e ALLOW_NONE_AUTHENTICATION=yes \
   bitnami/etcd:3.5.18
 ```
 
@@ -204,6 +217,8 @@ docker run -d \
   -p 4379:2379 \
   -p 4380:2380 \
   -v /shared/etcd/data/etcd5:/bitnami/etcd \
+  -v /shared/etcd/snapshot/etcd5:/snapshots \
+  -v /shared/etcd/snapshot-init/etcd5:/init-snapshot \  
   -e ETCD_NAME="etcd5" \
   -e ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379" \
   -e ETCD_ADVERTISE_CLIENT_URLS="http://10.101.99.101:4379" \
@@ -213,6 +228,7 @@ docker run -d \
   -e ETCD_INITIAL_CLUSTER_STATE="new" \
   -e ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster-1" \
   -e ETCD_ROOT_PASSWORD="1234qwer!!" \
+  -e ALLOW_NONE_AUTHENTICATION=yes \
   bitnami/etcd:3.5.18
 ```
 

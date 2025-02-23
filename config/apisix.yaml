@@ -1,17 +1,25 @@
 apisix:
+  ssl:
+    enable: true
+    enable_http2: true
+    ssl_protocols: TLSv1.3
   proxy_mode: http&stream
   node_listen:
-    - port: 9080      # HTTP 트래픽 처리
+    - port: 80      # 외부 HTTP 트래픽용
+    - port: 443     # 외부 HTTPS 트래픽용
+    - port: 9080    # 기존 HTTP 트래픽 처리  
+    - port: 9081
+  enable_http2: true
   stream_proxy:
     tcp:
       - 6380 # listen on 9100 ports of all network interfaces for TCP requests
       - "127.0.0.1:6380"
-    # udp:
-    #   - 9200 # listen on 9200 ports of all network interfaces for UDP requests
-    #   - "127.0.0.1:9211"
+    udp:
+      - 9200 # listen on 9200 ports of all network interfaces for UDP requests
+      - "127.0.0.1:9211"
   # lua_module_hook: "my_hook" # 사용자 정의 Lua 모듈 이름
   # extra_lua_path:
-  #   - "/usr/local/apissix-plugin-lua/?.lua"    
+  #   - "/usr/local/apissix-plugin-lua/?.lua"
 
 deployment:
   role: traditional
@@ -43,20 +51,36 @@ discovery:
     host:
       - "http://10.101.99.102:8761"
     prefix: "/eureka/"
-    fetch_interval: 30               # 30s
-    weight: 100                      # default weight for node
+    fetch_interval: 30 # 30s
+    weight: 100 # default weight for node
     timeout:
-      connect: 2000                  # 2000ms
-      send: 2000                     # 2000ms
-      read: 5000                     # 5000ms
-
+      connect: 2000 # 2000ms
+      send: 2000 # 2000ms
+      read: 5000 # 5000ms
 
 plugin_attr:
   # Prometheus 모니터링 설정
   prometheus:
+    export_uri: "/apisix/prometheus/metrics"
     export_addr:
       ip: "0.0.0.0"
       port: 9091
+
+  log-rotate:
+    interval: 3600    # rotate interval (unit: second)
+    max_kept: 168     # max number of log files will be kept
+    max_size: 10000000      # max size of log files will be kept
+    enable_compression: true    # enable log file compression(gzip) or not, default false      
+
+  opentelemetry:
+    resource:
+      service.name: "apisix"
+      env: "prod"
+    collector:
+      address: "10.101.91.145:4318"   # OTLP HTTP receiver 포트
+      request_timeout: 3
+
+
 
 plugins:
   - authz-keycloak
@@ -79,11 +103,8 @@ plugins:
   - proxy-rewrite
   - public-api
   - response-rewrite
-  - request-validation  
+  - request-validation
   - serverless-post-function
   - serverless-pre-function
   - syslog
   # - 3rd-party
-
-
-  
