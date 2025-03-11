@@ -4,10 +4,26 @@
 
 ## Route 관리
 
+### 신규 Route 추가
+
+```bash
+curl -i "http://127.0.0.1:9180/apisix/admin/routes" -H "X-API-KEY: $admin_key" -X PUT -d '
+{
+  "id": "getting-started-ip",
+  "uri": "/ip",
+  "upstream": {
+    "type": "roundrobin",
+    "nodes": {
+      "httpbin.org:80": 1
+    }
+  }
+}'
+```
+
 ### 신규 Route 추가 (https)
 
 ```bash
-curl -i "http://10.101.99.101:9180/apisix/admin/routes" -H "X-API-KEY: $admin_key"  -X PUT -d '
+curl -i "http://10.101.99.100:9180/apisix/admin/routes" -H "X-API-KEY: $admin_key"  -X PUT -d '
 {
   "id": "getting-started-headers",
   "uri": "/headers",
@@ -88,6 +104,7 @@ curl -i "http://10.101.99.101:9180/apisix/admin/routes/553448796621636287" -H "X
 
 ```bash
 for i in {1..10}; do curl "http://10.101.99.101:9180/headers" ; done
+
 
 hc=$(seq 100 | xargs -I {} curl "http://10.101.99.101:9180/headers" -sL | grep "httpbin" | wc -l); echo httpbin.org: $hc, mock.api7.ai: $((100 - $hc))
 ```
@@ -195,8 +212,8 @@ redis-cli  -h 10.101.99.100 -p 6380 PING
 #### 전역 Plugin 목록 조회
 
 ```bash
-curl "http://10.101.99.100:9180/apisix/admin/plugins" -H "X-API-KEY: $admin_key"
-curl "http://10.101.99.100:9180/apisix/admin/global_rules" -H "X-API-KEY: $admin_key"
+curl "http://10.101.99.100:9180/apisix/admin/plugins" -H "X-API-KEY: $admin_key" | jq
+curl "http://10.101.99.100:9180/apisix/admin/global_rules" -H "X-API-KEY: $admin_key" | jq
 ```
 
 #### 전역 Plugin 추가
@@ -228,6 +245,20 @@ curl -X PUT \
             "prometheus": {}
         }
     }'
+```
+
+#### 삭제
+```bash
+
+curl http://127.0.0.1:9180/apisix/admin/global_rules/global-monitoring-logger \
+  -H "X-API-KEY: $admin_key" -X DELETE
+```
+
+
+#### 목록 조회
+
+```bash
+curl http://127.0.0.1:9180/apisix/admin/global_rules   -H "X-API-KEY: $admin_key" -X GET | jq
 ```
 
 #### 검증

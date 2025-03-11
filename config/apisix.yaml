@@ -1,13 +1,16 @@
+# https://github.com/apache/apisix/blob/master/conf/config.yaml.example
+
 apisix:
   ssl:
     enable: true
-    enable_http2: true
-    ssl_protocols: TLSv1.3
+    ssl_protocols: TLSv1.2 TLSv1.3
+    listen:
+      - port: 9443
+      - port: 443
   proxy_mode: http&stream
   node_listen:
-    - port: 80      # 외부 HTTP 트래픽용
-    - port: 443     # 외부 HTTPS 트래픽용
-    - port: 9080    # 기존 HTTP 트래픽 처리  
+    - port: 80 # 외부 HTTP 트래픽용
+    - port: 9080 # 기존 HTTP 트래픽 처리
     - port: 9081
   enable_http2: true
   stream_proxy:
@@ -67,20 +70,24 @@ plugin_attr:
       port: 9091
 
   log-rotate:
-    interval: 3600    # rotate interval (unit: second)
-    max_kept: 168     # max number of log files will be kept
-    max_size: 10000000      # max size of log files will be kept
-    enable_compression: true    # enable log file compression(gzip) or not, default false      
+    interval: 3600 # rotate interval (unit: second)
+    max_kept: 10 # max number of log files will be kept
+    max_size: 10000000 # max size of log files will be kept
+    enable_compression: true # enable log file compression(gzip) or not, default false
 
   opentelemetry:
     resource:
       service.name: "apisix"
       env: "prod"
     collector:
-      address: "10.101.91.145:4318"   # OTLP HTTP receiver 포트
+      address: "10.101.91.145:4318" # OTLP HTTP receiver 포트
       request_timeout: 3
-
-
+    batch_span_processor:
+      drop_on_queue_full: false
+      max_queue_size: 1024
+      batch_timeout: 2
+      inactive_timeout: 1
+      max_export_batch_size: 16
 
 plugins:
   - authz-keycloak
@@ -92,6 +99,7 @@ plugins:
   - ext-plugin-post-resp
   - ext-plugin-pre-req
   - file-logger
+  - http-logger
   - forward-auth
   - jwt-auth
   - kafka-logger
@@ -107,4 +115,5 @@ plugins:
   - serverless-post-function
   - serverless-pre-function
   - syslog
+  - limit-count
   # - 3rd-party

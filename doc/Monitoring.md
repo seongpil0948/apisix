@@ -14,6 +14,17 @@
   - (옵션) AWS X-Ray: prod 트레이스 데이터 전송  
   - 추가적으로 파일(exporter)을 통해 로컬 백업 및 검증
 
+## node exporter
+
+```bash
+docker run -d \
+  --net="host" \
+  --pid="host" \
+  -v "/:/host:ro,rslave" \
+  quay.io/prometheus/node-exporter:latest \
+  --path.rootfs=/host
+```
+
 ## 전역 설정
 
 ### config.yaml 파일에서 전역 플러그인 등록
@@ -34,7 +45,7 @@ plugin_attr:
   prometheus:
     export_uri: "/apisix/prometheus/metrics"
 ```
-ㅋ
+
 
 ### 로그 전송 (OTLP)
 
@@ -42,7 +53,7 @@ plugin_attr:
 
 ```bash
 
-curl http://127.0.0.1:9180/apisix/admin/global_rules \
+curl http://127.0.0.1:9180/apisix/admin/global_rules/global-monitoring-logger \
   -H "X-API-KEY: $admin_key" -X PUT -d '{
     "id": "global-monitoring-logger",
     "plugins": {
@@ -72,27 +83,56 @@ curl http://127.0.0.1:9180/apisix/admin/global_rules \
 - APISIX는 기본적으로 9091 포트에서 `/apisix/prometheus/metrics`로 메트릭을 제공하므로, Collector에 이 주소를 scrape_targets로 추가할 수 있습니다.
 
 ### 3.3 트레이스 전송 (OTLP)
+OpenTelemetry 트레이싱 플러그인을 사용해 트레이스 데이터를 OTLP 포맷으로 Collector(10.101.91.145:4317)로 전송합니다.
 
-- OpenTelemetry 트레이싱 플러그인을 사용해 트레이스 데이터를 OTLP 포맷으로 Collector(10.101.91.145:4317)로 전송합니다.
-  ```bash
-  curl http://<APISIX_HOST>:9180/apisix/admin/routes/1 \
-    -H "X-API-KEY: $admin_key" -X PUT -d '{
-      "methods": ["GET"],
-      "uris": ["/uid/*"],
-      "plugins": {
-        "opentelemetry": {
+
+#### 특정 라우트에 트레이싱 플러그인 추가
+```bash
+curl http://127.0.0.1:9080/apisix/admin/routes/9999 \
+-H "X-API-KEY: $admin_key" \
+-X PUT -d '
+{
+  "uri": "/get",
+  "plugins": {
+      "opentelemetry": {
           "sampler": {
-            "name": "always_on"
-          },
-          "additional_attributes": ["env=prod", "service.name=apisix"]
-        }
-      },
-      "upstream": {
-        "type": "roundrobin",
-        "nodes": {"127.0.0.1:1980": 1}
+              "name": "always_on"
+          }
       }
-  }'
-  ```
+  },
+  "upstream": {
+      "type": "roundrobin",
+      "nodes": {
+          "httpbin.org:80": 1
+      }
+  }
+}'
+```
+
+#### 하지만 난 전역에 추가해버리기
+
+```bash
+curl -X PUT \
+  http://10.101.99.100:9180/apisix/admin/global_rules/3 \
+  -H 'Content-Type: application/json' \
+  -H "X-API-KEY: $admin_key" \
+  -d '{
+      "plugins": {
+          "opentelemetry": {
+              "sampler": {
+                  "name": "always_on"
+              },
+              "additional_attributes": ["env=prod", "service.name=apisix"]              
+          }
+      }
+    }'
+```
+
+#### 추가한 트레이싱 확인
+
+```bash
+for i in {1..60}; do curl "https://dwoong.com/http/delay/${i}" ; done
+```
 
 ---
 

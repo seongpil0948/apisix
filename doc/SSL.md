@@ -88,7 +88,7 @@ APISIX는 TLS의 Server Name Indication(SNI) 기능을 활용해 여러 인증�
 
 ```bash
 
-curl http://10.101.99.100:9080/apisix/admin/ssls/1 \
+curl http://10.101.99.100:9180/apisix/admin/ssls/1 \
 -H "X-API-KEY: $admin_key" -X PUT -d '
 {
      "cert" : "'"$(sudo cat /etc/letsencrypt/live/dwoong.com/fullchain.pem)"'",
@@ -102,7 +102,7 @@ curl http://10.101.99.100:9080/apisix/admin/ssls/1 \
 #### 조회
 
 ```bash
-curl http://10.101.99.100:9080/apisix/admin/ssls -H "X-API-KEY: $admin_key" 
+curl http://10.101.99.100:9180/apisix/admin/ssls -H "X-API-KEY: $admin_key" 
 ```
 
 3. **Router 객체 생성 (도메인에 맞게 라우팅)**
@@ -110,7 +110,7 @@ curl http://10.101.99.100:9080/apisix/admin/ssls -H "X-API-KEY: $admin_key"
 예를 들어, dwoong.com 도메인에서 `/get` URI 요청을 특정 백엔드(예: on-premise 앱)로 전달하려면 다음과 같이 구성합니다.
 
 ```bash
-curl http://127.0.0.1:80/apisix/admin/routes \
+curl http://127.0.0.1:9180/apisix/admin/routes \
   -H "X-API-KEY: $admin_key" \
   -X PUT -i -d '{
     "id": "test-ssl",
@@ -120,10 +120,22 @@ curl http://127.0.0.1:80/apisix/admin/routes \
     "upstream": {
         "type": "roundrobin",
         "nodes": {
-            "httpbin.org:80": 1
+            "httpbin.org:443": 1
         }
     }
   }'
+
+curl -i "http://127.0.0.1:9180/apisix/admin/routes" -H "X-API-KEY: $admin_key" -X PUT -d '
+{
+  "id": "quickstart-client-ip",
+  "uri": "/ip",
+  "upstream": {
+    "nodes": {
+      "httpbin.org:443":1
+    },
+    "type": "roundrobin"
+  }
+}'  
 ```
 
 ---
@@ -153,8 +165,59 @@ openssl s_client -connect 10.101.99.100:443 -tls1_3
 
 ---
 
-### 5. 추가 고려사항
+PEM 파일은 Base64로 인코딩된 DER 형식의 데이터를 포함하며, 텍스트 파일 내에 `-----BEGIN CERTIFICATE-----` 또는 `-----BEGIN PRIVATE KEY-----` 등의 헤더와 푸터가 포함되어 있습니다. OpenSSL을 사용하면 PEM 파일을 디코딩하고 상세 정보를 확인할 수 있습니다.
 
-- **자동 갱신**: Let's Encrypt 인증서는 90일마다 만료되므로, Certbot의 자동 갱신(cron job 등)을 설정하고, 인증서 갱신 후 APISIX에 새 인증서를 적용할 수 있도록 재로딩하는 작업이 필요합니다.
-- **포트 및 방화벽**: APISIX가 HTTPS(일반적으로 443 또는 9443) 포트에서 요청을 수신하도록 설정되어 있는지, 온프레미스 서버 및 네트워크 방화벽에서 해당 포트가 개방되어 있는지 확인합니다.
+---
+
+## 인증서(Public Certificate) 디코딩
+
+인증서 파일(fullchain.pem 등)의 내용을 확인하려면 다음 명령어를 사용합니다:
+
+```bash
+openssl x509 -in /etc/letsencrypt/live/dwoong.com/fullchain.pem -text -noout
+```
+
+이 명령어는 인증서의 유효기간, 발급자, 주체, 공개키, 확장 필드 등 여러 정보를 사람이 읽기 쉬운 형태로 출력합니다.
+
+---
+
+## 개인키(Private Key) 디코딩
+
+RSA 개인키의 경우 다음 명령어를 사용합니다:
+
+```bash
+openssl rsa -in /etc/letsencrypt/live/dwoong.com/privkey.pem -text -noout
+```
+
+만약 EC (Elliptic Curve) 개인키인 경우에는 아래 명령어를 사용합니다:
+
+```bash
+openssl ec -in /etc/letsencrypt/live/dwoong.com/privkey.pem -text -noout
+```
+
+이 명령어들은 개인키의 구조, 크기, 공개키 정보 등을 출력합니다.
+
+---
+
+## 인증서 서명 요청(CSR) 파일 디코딩
+
+CSR 파일의 내용을 확인하려면 다음 명령어를 사용합니다:
+
+```bash
+openssl req -in request.pem -text -noout
+```
+
+이 명령어는 요청서에 포함된 주체 정보, 공개키, 확장 필드 등 상세 정보를 출력합니다.
+
+---
+
+## 참고 사항
+
+- **여러 개의 인증서가 포함된 경우**  
+  PEM 파일에 여러 인증서가 포함되어 있다면, 해당 명령어는 첫 번째 인증서만 디코딩합니다. 여러 인증서를 확인하려면 텍스트 편집기로 파일을 열어 각 인증서를 분리하여 별도로 디코딩하면 됩니다.
+
+- **파일 권한**  
+  특히 개인키 파일은 민감하므로, 읽기 권한이 제한되어 있는지 확인하고, 작업 후 적절한 보안 조치를 취해야 합니다.
+
+이와 같이 OpenSSL 명령어를 활용하면 PEM 파일의 내용을 쉽게 디코딩하여 해석할 수 있습니다.
 

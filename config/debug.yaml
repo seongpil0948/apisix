@@ -1,5 +1,15 @@
-basic:
-  enable: true
+# https://apisix.apache.org/docs/apisix/debug-mode/#advanced-debug-mode
 hook_conf:
-http_filter:
+  enable: false # Enables/disables hook debug trace
+  name: hook_phase # Module list name of the hook that enabled the debug trace
+  log_level: warn # Log level for input arguments & returned values
+  is_print_input_args: true # When set to `true` enables printing input arguments
+  is_print_return_value: true # When set to `true` enables printing returned values
+
+hook_phase: # Module function list, Name: hook_phase
+  apisix: # Referenced module name
+    - http_access_phase # Function names：Array
+    - http_header_filter_phase
+    - http_body_filter_phase
+    - http_log_phase
 #END

@@ -30,20 +30,32 @@ rm $HOME/logs/apisix/*.sock
 
 docker run -d   \
     --restart unless-stopped \
-    -p 80:9080 \
-    -p 9080:9080 \
-    -p 9081:9081 \
-    -p 9082:9082 \
-    -p 6380:6380 \
-    -p 9200:9200 \
-    -p 443:9443 \
-    -p 9091:9091 \
+    --network host \
+    --user root \
     -v /shared/etcd/data/etcd1:/bitnami/etcd \
     -v $HOME/logs/apisix:/usr/local/apisix/logs \
     -v /shared/scm/apisix/config/apisix.yaml:/usr/local/apisix/conf/config.yaml \
     -v /shared/scm/apisix/config/debug.yaml:/usr/local/apisix/conf/debug.yaml \
     -v /shared/scm/apissix-plugin-lua:/usr/local/apissix-plugin-lua \
     apache/apisix:latest
+
+# docker run -d   \
+#     --restart unless-stopped \
+#     -p 80:9080 \
+#     -p 9180:9180 \
+#     -p 9080:9080 \
+#     -p 9081:9081 \
+#     -p 9082:9082 \
+#     -p 6380:6380 \
+#     -p 9200:9200 \
+#     -p 443:443 \
+#     -p 9091:9091 \
+#     -v /shared/etcd/data/etcd1:/bitnami/etcd \
+#     -v $HOME/logs/apisix:/usr/local/apisix/logs \
+#     -v /shared/scm/apisix/config/apisix.yaml:/usr/local/apisix/conf/config.yaml \
+#     -v /shared/scm/apisix/config/debug.yaml:/usr/local/apisix/conf/debug.yaml \
+#     -v /shared/scm/apissix-plugin-lua:/usr/local/apissix-plugin-lua \
+#     apache/apisix:latest
 ```
 
 ### APISIX Dashboard 실행 (Docker)

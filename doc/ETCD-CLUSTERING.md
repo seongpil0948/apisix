@@ -1,7 +1,3 @@
-아래는 TLS/CERT 관련 내용 없이 사용자 인증(ETCD_ROOT_PASSWORD) 설정을 유지하면서, 클러스터 부트스트랩 방식(정적 부트스트랩, etcd Discovery, DNS Discovery) 내용을 반영한 Bitnami Etcd 클러스터와 APISIX 연동 가이드입니다.
-
----
-
 # Bitnami Etcd (etcd v3) 클러스터 부트스트랩 및 APISIX 연동 가이드
 
 이 문서는 두 서버(10.101.99.100, 10.101.99.101)에 걸쳐 총 5개의 Etcd 노드를 도커 컨테이너로 배포하고,  
@@ -170,7 +166,7 @@ docker run -d \
   -p 2380:2380 \
   -v /shared/etcd/data/etcd3:/bitnami/etcd \
   -v /shared/etcd/snapshot/etcd3:/snapshots \
-  -v /shared/etcd/snapshot-init/etcd3:/init-snapshot \  
+  -v /shared/etcd/snapshot-init/etcd3:/init-snapshot \
   -e ETCD_NAME="etcd3" \
   -e ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379" \
   -e ETCD_ADVERTISE_CLIENT_URLS="http://10.101.99.101:2379" \
@@ -182,11 +178,16 @@ docker run -d \
   -e ETCD_ROOT_PASSWORD="1234qwer!!" \
   -e ALLOW_NONE_AUTHENTICATION=yes \
   bitnami/etcd:3.5.18
+
+
 ```
 
 #### **etcd4 컨테이너**
 
 ```bash
+
+export ETCD_INITIAL_CLUSTER="etcd1=http://10.101.99.100:2380,etcd2=http://10.101.99.100:3380,etcd3=http://10.101.99.101:2380,etcd4=http://10.101.99.101:3380,etcd5=http://10.101.99.101:4380"
+
 docker run -d \
   --restart unless-stopped \
   --user 1003:1003 \
@@ -194,7 +195,7 @@ docker run -d \
   -p 3380:2380 \
   -v /shared/etcd/data/etcd4:/bitnami/etcd \
   -v /shared/etcd/snapshot/etcd4:/snapshots \
-  -v /shared/etcd/snapshot-init/etcd4:/init-snapshot \  
+  -v /shared/etcd/snapshot-init/etcd4:/init-snapshot \
   -e ETCD_NAME="etcd4" \
   -e ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379" \
   -e ETCD_ADVERTISE_CLIENT_URLS="http://10.101.99.101:3379" \
@@ -206,11 +207,15 @@ docker run -d \
   -e ETCD_ROOT_PASSWORD="1234qwer!!" \
   -e ALLOW_NONE_AUTHENTICATION=yes \
   bitnami/etcd:3.5.18
+
 ```
 
 #### **etcd5 컨테이너**
 
+
 ```bash
+export ETCD_INITIAL_CLUSTER="etcd1=http://10.101.99.100:2380,etcd2=http://10.101.99.100:3380,etcd3=http://10.101.99.101:2380,etcd4=http://10.101.99.101:3380,etcd5=http://10.101.99.101:4380"
+
 docker run -d \
   --restart unless-stopped \
   --user 1003:1003 \
@@ -218,7 +223,7 @@ docker run -d \
   -p 4380:2380 \
   -v /shared/etcd/data/etcd5:/bitnami/etcd \
   -v /shared/etcd/snapshot/etcd5:/snapshots \
-  -v /shared/etcd/snapshot-init/etcd5:/init-snapshot \  
+  -v /shared/etcd/snapshot-init/etcd5:/init-snapshot \
   -e ETCD_NAME="etcd5" \
   -e ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379" \
   -e ETCD_ADVERTISE_CLIENT_URLS="http://10.101.99.101:4379" \
@@ -230,6 +235,7 @@ docker run -d \
   -e ETCD_ROOT_PASSWORD="1234qwer!!" \
   -e ALLOW_NONE_AUTHENTICATION=yes \
   bitnami/etcd:3.5.18
+
 ```
 
 ---
