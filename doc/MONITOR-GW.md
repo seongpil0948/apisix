@@ -173,7 +173,26 @@ Prometheus를 재시작/재로드 후, `Status → Targets`에서 “UP” 상�
 
 ---
 
-# 6. 최종 요약
+## 6 OpenTelemetry 추가 (선택)
+전역 플러그인으로서 추가합니다.  
+
+```bash
+curl -X PUT \
+  http://10.101.99.100:9180/apisix/admin/global_rules/otel \
+  -H 'Content-Type: application/json' \
+  -H "X-API-KEY: $admin_key" \
+  -d '{
+        "plugins": {
+            "opentelemetry": {
+              "sampler": {
+                  "name": "always_on"
+              }
+            }
+        }
+    }'
+```
+
+## 최종 요약
 
 1. **Prometheus 전역 플러그인**  
    - `plugins` 목록에 `prometheus` 추가 + `enable_export_server: false`  

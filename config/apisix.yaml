@@ -80,7 +80,7 @@ plugin_attr:
       service.name: "apisix"
       env: "prod"
     collector:
-      address: "10.101.91.145:4318" # OTLP HTTP receiver 포트
+      address: "0.0.0.0:4318" # OTLP HTTP receiver 포트
       request_timeout: 3
     batch_span_processor:
       drop_on_queue_full: false
