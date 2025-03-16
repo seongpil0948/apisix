@@ -271,10 +271,67 @@ curl -i http://10.101.99.101:9080/apisix/status
 ```
 
 
-## Eureka 연동
+### Eureka 연동
 The diagnostic interface is exposed on port 9090 of the loopback interface by default, and the access method is GET /v1/discovery/{discovery_type}/dump, for example:
 ```bash
 
 curl http://localhost:9090/v1/discovery/eureka/dump
 
+```
+
+### OTEL Collector 경로 추가
+
+
+```bash
+curl -X PUT "http://10.101.99.100:9180/apisix/admin/routes/otel_http" \
+  -H "X-API-KEY: 1234qwer!!" \
+  -d '{
+    "uri": "/v1/traces",
+    "host": "trader.dwoong.com",
+    "plugins": {
+      "proxy-rewrite": {
+        "uri": "/v1/traces"
+      }
+    },
+    "upstream": {
+      "type": "roundrobin",
+      "nodes": {
+        "10.101.91.145:4318": 1
+      }
+    }
+  }'
+
+# OTEL HTTP 라우트에 레이트 제한 추가
+curl -X PATCH "http://10.101.99.100:9180/apisix/admin/routes/otel_http" \
+  -H "X-API-KEY: $admin_key" \
+  -d '{
+    "plugins": {
+      "limit-req": {
+        "rate": 100,
+        "burst": 200,
+        "rejected_code": 429,
+        "key": "remote_addr"
+      }
+    }
+  }'
+```
+
+#### TEST
+올바른 헤더와 IP로 요청 테스트:
+
+```bash
+# HTTP 요청 테스트 (125.209.206.X IP에서 실행해야 함)
+curl -i "https://dwoong.com/v1/traces" \
+  -H "Host: trader.dwoong.com" \
+  --data '{...OTLP JSON 데이터...}'
+```
+
+잘못된 호스트 또는 IP로 테스트:
+
+```bash
+# 잘못된 호스트로 요청 (거부되어야 함)
+curl -i "https://trader.dwoong.com/v1/traces" \
+  -H "Host: wrong.example.com" \
+  -H "Authorization: Bearer $TOKEN" \
+  --data '{...OTLP JSON 데이터...}'
 ```

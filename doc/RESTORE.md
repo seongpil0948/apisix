@@ -65,20 +65,21 @@ aws s3 ls s3://theshop-lake/connect/backup/daily/etcd1/ | sort | tail -n 1 | awk
 각 노드마다 고유한 `--name`과 `--initial-advertise-peer-urls`를 지정하며, 동일한 `--initial-cluster`를 사용합니다.
 
 ```bash
+export INITIAL_CLUSTER="etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380,etcd5=http://etcd5:2380"
 # etcd1 복구
-docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd1:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd1 --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380,etcd5=http://etcd5:2380 --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd1:2380
+docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd1:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd1 --initial-cluster $INITIAL_CLUSTER --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd1:2380
 
 # etcd2 복구
-docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd2:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd2 --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380,etcd5=http://etcd5:2380 --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd2:2380
+docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd2:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd2 --initial-cluster $INITIAL_CLUSTER --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd2:2380
 
 # etcd3 복구
-docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd3:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd3 --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380,etcd5=http://etcd5:2380 --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd3:2380
+docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd3:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd3 --initial-cluster $INITIAL_CLUSTER --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd3:2380
 
 # etcd4 복구
-docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd4:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd4 --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380,etcd5=http://etcd5:2380 --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd4:2380
+docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd4:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd4 --initial-cluster $INITIAL_CLUSTER --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd4:2380
 
 # etcd5 복구
-docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd5:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd5 --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380,etcd4=http://etcd4:2380,etcd5=http://etcd5:2380 --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd5:2380
+docker run --rm -v $(pwd)/snapshot.db:/snapshot.db -v $(pwd)/etcd-data/etcd5:/bitnami/etcd bitnami/etcd:3.5.18 etcdutl snapshot restore /snapshot.db --data-dir /bitnami/etcd --name etcd5 --initial-cluster $INITIAL_CLUSTER --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://etcd5:2380
 ```
 
 - **주의**:  
@@ -278,9 +279,11 @@ docker-compose up -d
 ### 7. 복구 확인
 
 #### ETCD 클러스터 상태 확인
-
+컨테이너 접속후 실행
 ```bash
-docker exec -it <etcd1_container_id> etcdctl --endpoints=http://etcd1:2379,http://etcd2:2379,http://etcd3:2379,http://etcd4:2379,http://etcd5:2379 --user admin:1234qwer!! member list
+export ETCDCTL_API=3
+etcdctl --endpoints=http://etcd1:2379,http://etcd2:2379,http://etcd3:2379,http://etcd4:2379,http://etcd5:2379  member list 
+etcdctl --endpoints=http://etcd1:2379,http://etcd2:2379,http://etcd3:2379,http://etcd4:2379,http://etcd5:2379  endpoint status  --cluster -w table
 ```
 
 - `<etcd1_container_id>`는 `docker ps`로 확인한 etcd1 컨테이너 ID로 대체하세요.  

@@ -44,7 +44,13 @@ deployment:
         key: "1234qwer!!" # 실제 운영 환경에서는 보다 복잡한 값으로 변경할 것
         role: admin
     allow_admin:
-      - 0.0.0.0/0 # 필요 시 특정 IP 범위로 제한 가능
+      - 127.0.0.1/32
+      - 10.101.0.0/16
+      - 59.10.17.253/32
+      - 203.234.253.0/24
+      - 180.64.179.43/32
+      - 175.197.211.231/32
+      - 125.209.206.0/24
     admin_listen:
       ip: 0.0.0.0
       port: 9180
@@ -116,4 +122,5 @@ plugins:
   - serverless-pre-function
   - syslog
   - limit-count
+  - ip-restriction
   # - 3rd-party
