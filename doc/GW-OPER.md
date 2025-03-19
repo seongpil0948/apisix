@@ -283,37 +283,32 @@ curl http://localhost:9090/v1/discovery/eureka/dump
 
 
 ```bash
-curl -X PUT "http://10.101.99.100:9180/apisix/admin/routes/otel_http" \
-  -H "X-API-KEY: 1234qwer!!" \
-  -d '{
-    "uri": "/v1/traces",
-    "host": "trader.dwoong.com",
-    "plugins": {
-      "proxy-rewrite": {
-        "uri": "/v1/traces"
-      }
+curl http://127.0.0.1:9180/apisix/admin/routes/otel_http \
+-H "X-API-KEY: $admin_key" \
+-X PUT -d '
+{
+  "id": "otel_http",
+  "name": "otel_http",
+  "uri": "/otel/http*",
+  "plugins": {
+    "proxy-rewrite": {
+      "regex_uri": ["^/otel/http(.*)", "$1"]
     },
-    "upstream": {
-      "type": "roundrobin",
-      "nodes": {
-        "10.101.91.145:4318": 1
-      }
+    "limit-count": {
+        "time_window": 10,
+        "policy": "local",
+        "count": 20,
+        "key": "remote_addr",
+        "rejected_code": 503
     }
-  }'
-
-# OTEL HTTP 라우트에 레이트 제한 추가
-curl -X PATCH "http://10.101.99.100:9180/apisix/admin/routes/otel_http" \
-  -H "X-API-KEY: $admin_key" \
-  -d '{
-    "plugins": {
-      "limit-req": {
-        "rate": 100,
-        "burst": 200,
-        "rejected_code": 429,
-        "key": "remote_addr"
-      }
+  },
+  "upstream": {
+    "type": "roundrobin",
+    "nodes": {
+      "10.101.91.145:4318": 1
     }
-  }'
+  }
+}'
 ```
 
 #### TEST
