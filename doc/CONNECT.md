@@ -144,7 +144,7 @@ curl -i "http://127.0.0.1:9180/apisix/admin/routes/test-client-a" -X PUT \
     "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
     "plugins": {
       "forward-auth": {
-        "uri": "http://127.0.0.1:9080/connect/auth/validate",
+        "uri": "https://dwoong.com/connect/auth/validate",
         "request_headers": ["Authorization", "X-FORWARDED-URI", "X-FORWARDED-METHOD"],
         "upstream_headers": ["X-User-ID", "X-User-Name", "X-User-Roles"],
         "client_headers": ["Location"],
@@ -173,7 +173,7 @@ curl -i "http://127.0.0.1:9180/apisix/admin/routes/test-client-b" -X PUT \
     "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
     "plugins": {
       "forward-auth": {
-        "uri": "http://127.0.0.1:9080/connect/auth/validate",
+        "uri": "https://dwoong.com/connect/auth/validate",
         "request_headers": ["Authorization", "X-FORWARDED-URI", "X-FORWARDED-METHOD"],
         "upstream_headers": ["X-User-ID", "X-User-Name", "X-User-Roles"],
         "client_headers": ["Location"],
@@ -200,65 +200,74 @@ curl -i "http://127.0.0.1:9180/apisix/admin/routes/test-client-b" -X PUT \
 ### 4.1 로그인 및 토큰 획득
 각 사용자별로 로그인하여 토큰을 획득합니다:
 
-#### tester 사용자 로그인
+#### 테스트 사용자 로그인
+
 ```bash
-curl --location 'http://127.0.0.1:9080/connect/auth/sign-in' \
---header 'Content-Type: application/json' \
---data '{
+echo "Logging in as tester..."
+TESTER_RESPONSE=$(curl --silent --location 'https://dwoong.com/connect/auth/sign-in' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "id": "tester",
     "password": "1234"
-}'
-```
+  }')
 
-#### aClient 사용자 로그인
-```bash
-curl --location 'http://127.0.0.1:9080/connect/auth/sign-in' \
---header 'Content-Type: application/json' \
---data '{
+# Login for aClient user
+echo "Logging in as aClient..."
+ACLIENT_RESPONSE=$(curl --silent --location 'https://dwoong.com/connect/auth/sign-in' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "id": "aClient",
     "password": "1234"
-}'
-```
+  }')
 
-#### bClient 사용자 로그인
-```bash
-$(curl --location 'http://127.0.0.1:9080/connect/auth/sign-in' \
---header 'Content-Type: application/json' \
---data '{
+# Login for bClient user
+echo "Logging in as bClient..."
+BCLIENT_RESPONSE=$(curl --silent --location 'https://dwoong.com/connect/auth/sign-in' \
+  --header 'Content-Type: application/json' \
+  --data '{
     "id": "bClient",
     "password": "1234"
-}') | jq
+  }')
+
+# Extract tokens using jq
+TESTER_TOKEN=$(echo "$TESTER_RESPONSE" | jq -r '.data.token.access_token')
+ACLIENT_TOKEN=$(echo "$ACLIENT_RESPONSE" | jq -r '.data.token.access_token')
+BCLIENT_TOKEN=$(echo "$BCLIENT_RESPONSE" | jq -r '.data.token.access_token')
+
+# Export tokens as environment variables with Bearer prefix
+export TESTER_TOKEN="Bearer $TESTER_TOKEN"
+export ACLIENT_TOKEN="Bearer $ACLIENT_TOKEN"
+export BCLIENT_TOKEN="Bearer $BCLIENT_TOKEN"
+
+# Show the extracted tokens
+echo "Tokens set as environment variables:"
+echo "TESTER_TOKEN: $TESTER_TOKEN"
+echo "ACLIENT_TOKEN: $ACLIENT_TOKEN"
+echo "BCLIENT_TOKEN: $BCLIENT_TOKEN"
+
+echo "You can now use these tokens for testing API access"
+
 ```
 
-### 4.2 토큰 설정
-터미널에서 테스트에 사용할 토큰을 환경 변수로 설정합니다:
-
-```bash
-export TESTER_TOKEN="Bearer [tester 토큰 값]"
-export TESTER_TOKEN="Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1IiwibmFtZSI6InRlc3RlciIsImlkIjoi7YWM7Iqk7Yq4IOyCrOyaqeyekCIsInR5cGUiOiJVU0VSIiwiZ3JvdXBzIjpbXSwicm9sZXMiOlsiUk9MRV9URVNUX1VTRVIiXSwiaWF0IjoxNzQyNDUyNTkyLCJleHAiOjE3NDI1Mzg5OTJ9.FBvyQIfLQCu0snvkhleQk5DCp1ObLIxtTUlnbFLbCfUf_XvJ6usgyI5M3jneqKPv2gkm3KH93jzyxZXJbt98mw"
-export ACLIENT_TOKEN="Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2IiwibmFtZSI6ImFDbGllbnQiLCJpZCI6ImEgY2xpZW50IOyCrOyaqeyekCIsInR5cGUiOiJVU0VSIiwiZ3JvdXBzIjpbXSwicm9sZXMiOlsiUk9MRV9URVNUX0FfVVNFUiJdLCJpYXQiOjE3NDI0NTAwOTYsImV4cCI6MTc0MjUzNjQ5Nn0.RAj8itfXr9O-ekriExHfHHpMfIu0cckxPfBObA9Lz3I4TjRJ-ZOs3U6k_kfHXvCrF1Q5F4aA0RhX-sZ1TkW5rw"
-export BCLIENT_TOKEN="Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI3IiwibmFtZSI6ImJDbGllbnQiLCJpZCI6ImIgY2xpZW50IOyCrOyaqeyekCIsInR5cGUiOiJVU0VSIiwiZ3JvdXBzIjpbXSwicm9sZXMiOlsiUk9MRV9URVNUX0JfVVNFUiJdLCJpYXQiOjE3NDI0NTAxMTAsImV4cCI6MTc0MjUzNjUxMH0.b41AehZVGmS78qWKYMAAcMbjNSU0BcWxpUMaCcJ4i9S2W1_hL4f39n-XawI_vV5-V-2R56HJZIcCvdtJA0jN5Q"
-```
-
-### 4.3 tester 사용자 테스트
+### tester 사용자 테스트
 
 #### tester 사용자 TEST-CLIENT-A 접근 테스트
 ```bash
 # 테스트 A - client/123456 엔드포인트
 curl -i "http://10.101.99.102:8081/connect/test-a/client/123456" \
   -H "Authorization: $TESTER_TOKEN"
-curl -i "http://127.0.0.1:9080/connect/test-a/client/123456" \
+curl -i "https://dwoong.com/connect/test-a/client/123456" \
   -H "Authorization: $TESTER_TOKEN"
 
-curl -i "http://127.0.0.1:9080/connect/test-a/clients" \
+curl -i "https://dwoong.com/connect/test-a/clients" \
   -H "Authorization: $TESTER_TOKEN"
 
 # 테스트 B - client/123456 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-b/client/123456" \
+curl -i "https://dwoong.com/connect/test-b/client/123456" \
   -H "Authorization: $TESTER_TOKEN"
 
 # 테스트 B - clients 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-b/clients" \
+curl -i "https://dwoong.com/connect/test-b/clients" \
   -H "Authorization: $TESTER_TOKEN"  
 ```
 - **기대 결과**: 모두 HTTP 200 OK
@@ -268,11 +277,11 @@ curl -i "http://127.0.0.1:9080/connect/test-b/clients" \
 #### aClient 사용자 TEST-CLIENT-A 접근 테스트
 ```bash
 # 테스트 A - client/123456 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-a/client/123456" \
+curl -i "https://dwoong.com/connect/test-a/client/123456" \
   -H "Authorization: $ACLIENT_TOKEN"
 
 # 테스트 A - clients 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-a/clients" \
+curl -i "https://dwoong.com/connect/test-a/clients" \
   -H "Authorization: $ACLIENT_TOKEN"
 ```
 - **기대 결과**: 모두 HTTP 200 OK
@@ -280,11 +289,11 @@ curl -i "http://127.0.0.1:9080/connect/test-a/clients" \
 #### aClient 사용자 TEST-CLIENT-B 접근 테스트
 ```bash
 # 테스트 B - client/123456 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-b/client/123456" \
+curl -i "https://dwoong.com/connect/test-b/client/123456" \
   -H "Authorization: $ACLIENT_TOKEN"
 
 # 테스트 B - clients 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-b/clients" \
+curl -i "https://dwoong.com/connect/test-b/clients" \
   -H "Authorization: $ACLIENT_TOKEN"
 ```
 - **기대 결과**: 모두 HTTP 403 Forbidden
@@ -294,11 +303,11 @@ curl -i "http://127.0.0.1:9080/connect/test-b/clients" \
 #### bClient 사용자 TEST-CLIENT-A 접근 테스트
 ```bash
 # 테스트 A - client/123456 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-a/client/123456" \
+curl -i "https://dwoong.com/connect/test-a/client/123456" \
   -H "Authorization: $BCLIENT_TOKEN"
 
 # 테스트 A - clients 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-a/clients" \
+curl -i "https://dwoong.com/connect/test-a/clients" \
   -H "Authorization: $BCLIENT_TOKEN"
 ```
 - **기대 결과**: 모두 HTTP 403 Forbidden
@@ -306,11 +315,11 @@ curl -i "http://127.0.0.1:9080/connect/test-a/clients" \
 #### bClient 사용자 TEST-CLIENT-B 접근 테스트
 ```bash
 # 테스트 B - client/123456 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-b/client/123456" \
+curl -i "https://dwoong.com/connect/test-b/client/123456" \
   -H "Authorization: $BCLIENT_TOKEN"
 
 # 테스트 B - clients 엔드포인트
-curl -i "http://127.0.0.1:9080/connect/test-b/clients" \
+curl -i "https://dwoong.com/connect/test-b/clients" \
   -H "Authorization: $BCLIENT_TOKEN"
 ```
 - **기대 결과**: 모두 HTTP 200 OK
