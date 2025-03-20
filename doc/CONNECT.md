@@ -1,17 +1,18 @@
 # Eureka 연동 및 인증 설정 가이드 (APISIX & Eureka)
 
-이 가이드는 Eureka를 통해 APISIX와 인증 서버(`CONNECT-AUTH-API`)를 연동하고, 
-tester 사용자의 호출 가능 엔드포인트에 대한 인증 설정을 완료하는 방법을 설명합니다. 
-tester 사용자가 호출 가능한 특정 엔드포인트는 허용하며, 그 외의 엔드포인트에 대해서는 403 Forbidden을 반환하도록 설정합니다.
+이 가이드는 Eureka를 통해 APISIX와 인증 서버(`AUTH-API`) 및 테스트 서버(`TEST-CLIENT-A`, `TEST-CLIENT-B`)를 연동하고, 사용자별 권한에 따른 접근 제어 설정을 완료하는 방법을 설명합니다.
 
 ## 1. Eureka 연동 설정
 
 ### 1.1 Eureka 서버 정보
 - **Eureka 서버 주소**: `http://10.101.99.102:8761`
 - **Prefix**: `/eureka/`
-- **서비스명**: `CONNECT-AUTH-API`
-  - 호스트: `10.101.99.102`
-  - 포트: `8080`
+- **서비스 정보**:
+  - 인증 서버 서비스명: `AUTH-API`
+    - 호스트: `10.101.99.102`
+    - 포트: `8080`
+  - 테스트 서버 A 서비스명: `TEST-CLIENT-A`
+  - 테스트 서버 B 서비스명: `TEST-CLIENT-B`
 
 ### 1.2 APISIX Eureka 디스커버리 설정
 APISIX의 `config.yaml` 파일에 Eureka 디스커버리 설정을 추가합니다:
@@ -43,39 +44,41 @@ Eureka에 등록된 서비스를 확인합니다:
 curl "http://127.0.0.1:9090/v1/discovery/eureka/dump" | jq
 ```
 
-응답에 `CONNECT-AUTH-API`가 포함되어 있는지 확인하세요.
+응답에 `AUTH-API`, `TEST-CLIENT-A`, `TEST-CLIENT-B`가 포함되어 있는지 확인하세요.
 
-## 2. 인증 서버 설정
+## 2. 인증 서버 정보
 
 ### 2.1 인증 서버 엔드포인트
-- **호출 엔드포인트**: `/connect/authorization/validate` (GET)
+- **서비스명**: `AUTH-API`
+- **제공 URI**:
+  - `/auth/validate` (GET)
+  - `/auth/sign-up` (POST)
+  - `/auth/sign-in` (POST)
+  - `/auth/sign-out` (POST)
+  - `/auth/refresh` (POST)
+
+### 2.2 인증 검증 요청 정보
+- **검증 엔드포인트**: `/auth/validate` (GET)
 - **필수 헤더**:
-  - `X-FORWARDED-URI`: 사용자가 호출한 URI (예: `/connect/test/clients`)
+  - `X-FORWARDED-URI`: 사용자가 호출한 URI (예: `/connect/test-a/clients`)
   - `X-FORWARDED-METHOD`: 사용자가 호출한 HTTP Method (예: `GET`)
   - `Authorization`: JWT 토큰 (Bearer 토큰 형식)
 
-### 2.2 tester 사용자 정보
-- **ID**: `tester`
-- **Password**: `1234`
-- **JWT Access Token**:
-  ```
-  Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1IiwibmFtZSI6Iu2FjOyKpO2KuCDsgqzsmqnsnpAiLCJpZCI6InRlc3RlciIsInR5cGUiOiJVU0VSIiwiZ3JvdXBzIjpbXSwicm9sZXMiOlsiUk9MRV9URVNUX1VTRVIiXSwiaWF0IjoxNzQyMTg4ODgwLCJleHAiOjE3NDIyNzUyODB9.ryJsfwvo-D23pWHOzh3zaymq9QEZcwKvejLC1ocHh6FeXPfjdCQuR22yhEc7lO3XJG8qWHxH2Q5Kj4sS76-U9g
-  ```
-
-### 2.3 tester 사용자의 호출 가능 엔드포인트
-- **허용된 엔드포인트**:
-  - `/connect/test/clients`
-  - `/connect/test/client/123456`
-  - `/connect/test2/clients`
-  - `/connect/test2/client/123456`
-  - `/connect/authorization/test1/clients`
-  - `/connect/authorization/test1/client/123456`
-  - `/connect/authorization/test2/clients`
-  - `/connect/authorization/test2/client/123456`
-- **호출 불가능한 엔드포인트 예시**:
-  - `/connect/supplier/clients` (403 Forbidden 반환)
-
-**참고**: 인증 서버는 `/connect` 경로 이후만 파싱하여 권한을 체크하므로, 앞단의 도메인(예: `XXX:8080`)은 임의의 값이어도 동작합니다.
+### 2.3 사용자 정보 및 권한
+- **사용자 1**:
+  - **ID**: `tester`
+  - **Password**: `1234`
+  - **권한**: 테스트서버 A, B 모두 호출 가능
+  
+- **사용자 2**:
+  - **ID**: `aClient`
+  - **Password**: `1234`
+  - **권한**: 테스트서버 A만 호출 가능
+  
+- **사용자 3**:
+  - **ID**: `bClient`
+  - **Password**: `1234`
+  - **권한**: 테스트서버 B만 호출 가능
 
 ## 3. APISIX 라우트 설정
 
@@ -83,43 +86,66 @@ curl "http://127.0.0.1:9090/v1/discovery/eureka/dump" | jq
 인증 서버 자체 호출은 인증을 요구하지 않도록 설정합니다:
 
 ```bash
+# curl -i "http://127.0.0.1:9180/apisix/admin/routes/connect-auth" -X DELETE -H "X-API-KEY: $admin_key" 
+# curl -i "http://127.0.0.1:9180/apisix/admin/routes/connect-auth-validate" -X DELETE -H "X-API-KEY: $admin_key" 
+
 curl -i "http://127.0.0.1:9180/apisix/admin/routes/connect-auth" -X PUT \
   -H "X-API-KEY: $admin_key" \
   -d '{
-    "uri": "/connect/authorization/*",
+    "uri": "/connect/auth/*",
     "name": "connect-auth-server-route",
-    "desc": "Route for authorization server - no auth required",
-    "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    "plugins": {
-      "proxy-rewrite": {
-        "uri": "/authorization/validate"
-      }
-    },    
+    "desc": "Route for auth server - no auth required",
+    "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"], 
+    "plugins": {},    
     "upstream": {
-      "service_name": "CONNECT-AUTH-API",
+      "service_name": "AUTH-API",
       "type": "roundrobin",
       "discovery_type": "eureka"
     },
     "priority": 200,
     "status": 1
   }'
-```
 
-### 3.2 보호된 엔드포인트 라우트 설정 (인증 필요)
-`/connect/*` 경로에 대해 `forward-auth` 플러그인을 적용하여 인증을 요구합니다:
-
-```bash
-curl -i "http://127.0.0.1:9180/apisix/admin/routes/connect-protected" -X PUT \
+curl -i "http://127.0.0.1:9180/apisix/admin/routes/connect-auth-validate" -X PUT \
   -H "X-API-KEY: $admin_key" \
   -d '{
-    "uri": "/connect/*",
-    "name": "connect-protected-route",
-    "desc": "Protected route requiring authentication",
+    "uri": "/connect/auth/validate",
+    "name": "connect-auth-server-route-validate",
+    "desc": "Route for auth server - no auth required",
+    "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"], 
+    "plugins": {
+      "proxy-rewrite": {
+        "headers": {
+          "X-FORWARDED-URI": "$uri",
+          "X-FORWARDED-METHOD": "$request_method"
+        }
+      }
+    },    
+    "upstream": {
+      "service_name": "AUTH-API",
+      "type": "roundrobin",
+      "discovery_type": "eureka"
+    },
+    "priority": 201,
+    "status": 1
+  }'  
+```
+
+### 3.2 테스트 서버 A, B 라우트 설정 (인증 필요)
+`/connect/test-a/*` 경로에 대해 `forward-auth` 플러그인을 적용하여 인증을 요구합니다:
+
+```bash
+curl -i "http://127.0.0.1:9180/apisix/admin/routes/test-client-a" -X PUT \
+  -H "X-API-KEY: $admin_key" \
+  -d '{
+    "uri": "/connect/test-a/*",
+    "name": "test-client-a",
+    "desc": "Protected route requiring authentication for TEST-CLIENT-A",
     "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
     "plugins": {
       "forward-auth": {
-        "uri": "/connect/authorization/validate",
-        "request_headers": ["Authorization"],
+        "uri": "http://127.0.0.1:9080/connect/auth/validate",
+        "request_headers": ["Authorization", "X-FORWARDED-URI", "X-FORWARDED-METHOD"],
         "upstream_headers": ["X-User-ID", "X-User-Name", "X-User-Roles"],
         "client_headers": ["Location"],
         "timeout": 5000,
@@ -127,100 +153,167 @@ curl -i "http://127.0.0.1:9180/apisix/admin/routes/connect-protected" -X PUT \
         "keepalive_timeout": 60000,
         "keepalive_pool": 5,
         "status_on_error": 403
-      },
-      "proxy-rewrite": {
-        "headers": {
-          "X-FORWARDED-URI": "$uri",
-          "X-FORWARDED-METHOD": "$request_method"
-        }
       }
     },
     "upstream": {
       "type": "roundrobin",
       "discovery_type": "eureka",
-      "service_name": "$1"
+      "service_name": "TEST-CLIENT-A"
     },
-    "vars": [
-      ["uri", "~~", "^/connect/([^/]+)/.*$"]
-    ],
+    "priority": 100,
+    "status": 1
+  }'
+
+curl -i "http://127.0.0.1:9180/apisix/admin/routes/test-client-b" -X PUT \
+  -H "X-API-KEY: $admin_key" \
+  -d '{
+    "uri": "/connect/test-b/*",
+    "name": "test-client-b",
+    "desc": "Protected route requiring authentication for TEST-CLIENT-B",
+    "methods": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    "plugins": {
+      "forward-auth": {
+        "uri": "http://127.0.0.1:9080/connect/auth/validate",
+        "request_headers": ["Authorization", "X-FORWARDED-URI", "X-FORWARDED-METHOD"],
+        "upstream_headers": ["X-User-ID", "X-User-Name", "X-User-Roles"],
+        "client_headers": ["Location"],
+        "timeout": 5000,
+        "keepalive": true,
+        "keepalive_timeout": 60000,
+        "keepalive_pool": 5,
+        "status_on_error": 403
+      }
+    },
+    "upstream": {
+      "type": "roundrobin",
+      "discovery_type": "eureka",
+      "service_name": "TEST-CLIENT-B"
+    },
     "priority": 100,
     "status": 1
   }'
 ```
 
-### 3.3 forward-auth 서비스 설정
-`forward-auth` 플러그인이 사용할 인증 서비스를 정의합니다:
 
+## 4. 테스트 시나리오
+
+### 4.1 로그인 및 토큰 획득
+각 사용자별로 로그인하여 토큰을 획득합니다:
+
+#### tester 사용자 로그인
 ```bash
-curl -i "http://127.0.0.1:9180/apisix/admin/services/auth-service" -X PUT \
-  -H "X-API-KEY: $admin_key" \
-  -d '{
-    "name": "auth-service",
-    "desc": "Authentication service via Eureka",
-    "upstream": {
-      "service_name": "CONNECT-AUTH-API",
-      "type": "roundrobin",
-      "discovery_type": "eureka"
-    }
-  }'
+curl --location 'http://127.0.0.1:9080/connect/auth/sign-in' \
+--header 'Content-Type: application/json' \
+--data '{
+    "id": "tester",
+    "password": "1234"
+}'
 ```
 
-## 4. 테스트 방법
+#### aClient 사용자 로그인
+```bash
+curl --location 'http://127.0.0.1:9080/connect/auth/sign-in' \
+--header 'Content-Type: application/json' \
+--data '{
+    "id": "aClient",
+    "password": "1234"
+}'
+```
 
-### 4.1 테스트 토큰 설정
+#### bClient 사용자 로그인
+```bash
+$(curl --location 'http://127.0.0.1:9080/connect/auth/sign-in' \
+--header 'Content-Type: application/json' \
+--data '{
+    "id": "bClient",
+    "password": "1234"
+}') | jq
+```
+
+### 4.2 토큰 설정
 터미널에서 테스트에 사용할 토큰을 환경 변수로 설정합니다:
 
 ```bash
-export TEST_TOKEN="Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1IiwibmFtZSI6Iu2FjOyKpO2KuCDsgqzsmqnsnpAiLCJpZCI6InRlc3RlciIsInR5cGUiOiJVU0VSIiwiZ3JvdXBzIjpbXSwicm9sZXMiOlsiUk9MRV9URVNUX1VTRVIiXSwiaWF0IjoxNzQyMTg4ODgwLCJleHAiOjE3NDIyNzUyODB9.ryJsfwvo-D23pWHOzh3zaymq9QEZcwKvejLC1ocHh6FeXPfjdCQuR22yhEc7lO3XJG8qWHxH2Q5Kj4sS76-U9g"
+export TESTER_TOKEN="Bearer [tester 토큰 값]"
+export TESTER_TOKEN="Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1IiwibmFtZSI6InRlc3RlciIsImlkIjoi7YWM7Iqk7Yq4IOyCrOyaqeyekCIsInR5cGUiOiJVU0VSIiwiZ3JvdXBzIjpbXSwicm9sZXMiOlsiUk9MRV9URVNUX1VTRVIiXSwiaWF0IjoxNzQyNDUyNTkyLCJleHAiOjE3NDI1Mzg5OTJ9.FBvyQIfLQCu0snvkhleQk5DCp1ObLIxtTUlnbFLbCfUf_XvJ6usgyI5M3jneqKPv2gkm3KH93jzyxZXJbt98mw"
+export ACLIENT_TOKEN="Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI2IiwibmFtZSI6ImFDbGllbnQiLCJpZCI6ImEgY2xpZW50IOyCrOyaqeyekCIsInR5cGUiOiJVU0VSIiwiZ3JvdXBzIjpbXSwicm9sZXMiOlsiUk9MRV9URVNUX0FfVVNFUiJdLCJpYXQiOjE3NDI0NTAwOTYsImV4cCI6MTc0MjUzNjQ5Nn0.RAj8itfXr9O-ekriExHfHHpMfIu0cckxPfBObA9Lz3I4TjRJ-ZOs3U6k_kfHXvCrF1Q5F4aA0RhX-sZ1TkW5rw"
+export BCLIENT_TOKEN="Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI3IiwibmFtZSI6ImJDbGllbnQiLCJpZCI6ImIgY2xpZW50IOyCrOyaqeyekCIsInR5cGUiOiJVU0VSIiwiZ3JvdXBzIjpbXSwicm9sZXMiOlsiUk9MRV9URVNUX0JfVVNFUiJdLCJpYXQiOjE3NDI0NTAxMTAsImV4cCI6MTc0MjUzNjUxMH0.b41AehZVGmS78qWKYMAAcMbjNSU0BcWxpUMaCcJ4i9S2W1_hL4f39n-XawI_vV5-V-2R56HJZIcCvdtJA0jN5Q"
 ```
 
-### 4.2 인증 서버 직접 접근 테스트
-인증 서버에 직접 요청을 보내어 정상 동작을 확인합니다:
+### 4.3 tester 사용자 테스트
 
+#### tester 사용자 TEST-CLIENT-A 접근 테스트
 ```bash
-curl -i "http://10.101.99.102:8080/authorization/validate" \
-  -H "X-FORWARDED-URI: /connect/test2/clients" \
-  -H "X-FORWARDED-METHOD: GET" \
-  -H "Authorization: $TEST_TOKEN"
+# 테스트 A - client/123456 엔드포인트
+curl -i "http://10.101.99.102:8081/connect/test-a/client/123456" \
+  -H "Authorization: $TESTER_TOKEN"
+curl -i "http://127.0.0.1:9080/connect/test-a/client/123456" \
+  -H "Authorization: $TESTER_TOKEN"
+
+curl -i "http://127.0.0.1:9080/connect/test-a/clients" \
+  -H "Authorization: $TESTER_TOKEN"
+
+# 테스트 B - client/123456 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-b/client/123456" \
+  -H "Authorization: $TESTER_TOKEN"
+
+# 테스트 B - clients 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-b/clients" \
+  -H "Authorization: $TESTER_TOKEN"  
 ```
-- **기대 응답**: HTTP 200 OK
+- **기대 결과**: 모두 HTTP 200 OK
+
+### 4.4 aClient 사용자 테스트
+
+#### aClient 사용자 TEST-CLIENT-A 접근 테스트
 ```bash
-curl -i "http://127.0.0.1:9080/connect/authorization/validate" \
-  -H "X-FORWARDED-URI: /connect/test2/clients" \
-  -H "X-FORWARDED-METHOD: GET" \
-  -H "Authorization: $TEST_TOKEN"
+# 테스트 A - client/123456 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-a/client/123456" \
+  -H "Authorization: $ACLIENT_TOKEN"
+
+# 테스트 A - clients 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-a/clients" \
+  -H "Authorization: $ACLIENT_TOKEN"
 ```
+- **기대 결과**: 모두 HTTP 200 OK
 
-
-### 4.3 APISIX를 통한 허용된 엔드포인트 테스트
-APISIX를 통해 허용된 엔드포인트에 접근합니다:
-
+#### aClient 사용자 TEST-CLIENT-B 접근 테스트
 ```bash
-curl -i "http://127.0.0.1:9080/connect/test2/clients" \
-  -H "Authorization: $TEST_TOKEN"
+# 테스트 B - client/123456 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-b/client/123456" \
+  -H "Authorization: $ACLIENT_TOKEN"
+
+# 테스트 B - clients 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-b/clients" \
+  -H "Authorization: $ACLIENT_TOKEN"
 ```
+- **기대 결과**: 모두 HTTP 403 Forbidden
 
-- **기대 응답**: HTTP 200 OK (또는 해당 서비스의 응답)
+### 4.5 bClient 사용자 테스트
 
-### 4.4 APISIX를 통한 허용되지 않은 엔드포인트 테스트
-허용되지 않은 엔드포인트에 접근하여 403 응답을 확인합니다:
-
+#### bClient 사용자 TEST-CLIENT-A 접근 테스트
 ```bash
-curl -i "http://127.0.0.1:9080/connect/supplier/clients" \
-  -H "Authorization: $TEST_TOKEN"
+# 테스트 A - client/123456 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-a/client/123456" \
+  -H "Authorization: $BCLIENT_TOKEN"
+
+# 테스트 A - clients 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-a/clients" \
+  -H "Authorization: $BCLIENT_TOKEN"
 ```
+- **기대 결과**: 모두 HTTP 403 Forbidden
 
-- **기대 응답**: HTTP 403 Forbidden
-
-### 4.5 추가 테스트: 새로운 허용 엔드포인트
-`/connect/authorization/test1/clients`와 같은 새로운 허용 엔드포인트도 확인합니다:
-
+#### bClient 사용자 TEST-CLIENT-B 접근 테스트
 ```bash
-curl -i "http://127.0.0.1:9080/connect/authorization/test1/clients" \
-  -H "Authorization: $TEST_TOKEN"
-```
+# 테스트 B - client/123456 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-b/client/123456" \
+  -H "Authorization: $BCLIENT_TOKEN"
 
-- **기대 응답**: HTTP 200 OK
+# 테스트 B - clients 엔드포인트
+curl -i "http://127.0.0.1:9080/connect/test-b/clients" \
+  -H "Authorization: $BCLIENT_TOKEN"
+```
+- **기대 결과**: 모두 HTTP 200 OK
 
 ## 5. 문제 해결 방법
 
@@ -232,13 +325,37 @@ curl "http://127.0.0.1:9090/v1/discovery/eureka/dump" | jq
 ```
 
 ### 5.2 Eureka 서비스 상세 확인
-`CONNECT-AUTH-API`의 등록 정보를 확인합니다:
+서비스 등록 정보를 확인합니다:
 
 ```bash
-curl -i "http://10.101.99.102:8761/eureka/apps/CONNECT-AUTH-API"
+# 인증 서버 확인
+curl -i "http://10.101.99.102:8761/eureka/apps/AUTH-API"
+
+# 테스트 서버 A 확인
+curl -i "http://10.101.99.102:8761/eureka/apps/TEST-CLIENT-A"
+
+# 테스트 서버 B 확인
+curl -i "http://10.101.99.102:8761/eureka/apps/TEST-CLIENT-B"
 ```
 
-### 5.3 APISIX 로그 확인
+### 5.3 인증 서버 직접 요청 테스트
+인증 서버에 직접 요청을 보내 정상 동작을 확인합니다:
+
+```bash
+# tester 사용자 테스트 A 권한 확인
+curl -i "http://10.101.99.102:8080/auth/validate" \
+  -H "X-FORWARDED-URI: /connect/test-a/clients" \
+  -H "X-FORWARDED-METHOD: GET" \
+  -H "Authorization: $TESTER_TOKEN"
+
+# aClient 사용자 테스트 B 권한 확인
+curl -i "http://10.101.99.102:8080/auth/validate" \
+  -H "X-FORWARDED-URI: /connect/test-b/clients" \
+  -H "X-FORWARDED-METHOD: GET" \
+  -H "Authorization: $ACLIENT_TOKEN"
+```
+
+### 5.4 APISIX 로그 확인
 오류가 발생할 경우 APISIX 로그를 확인합니다:
 
 ```bash
@@ -247,4 +364,4 @@ tail -f /usr/local/apisix/logs/error.log
 
 ---
 
-위 가이드를 따라 Eureka와 APISIX를 성공적으로 연동하고, tester 사용자의 호출 가능 엔드포인트에 대한 인증 설정을 완료할 수 있습니다. 설정 후 테스트를 통해 정상 작동 여부를 확인하세요!
+위 가이드를 따라 Eureka와 APISIX를 성공적으로 연동하고, 사용자별 권한에 따른 접근 제어 설정을 완료할 수 있습니다. 각 테스트 시나리오를 통해 설정이 정상적으로 작동하는지 확인하세요.

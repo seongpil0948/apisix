@@ -106,30 +106,6 @@ curl "http://127.0.0.1:9180/apisix/admin/routes" -H "X-API-KEY: $admin_key" -X P
   }
 }'
 
-
-
-curl "http://127.0.0.1:9180/apisix/admin/routes" -H "X-API-KEY: $admin_key" -X PUT -d '
-{
-  "id": "route-test-client-a",
-  "uri": "/eureka/test-client-a/*",
-  "upstream": {
-    "service_name": "TEST-CLIENT-A",
-    "discovery_type": "eureka",
-    "type": "roundrobin"
-  }
-}'
-
-curl "http://127.0.0.1:9180/apisix/admin/routes" -H "X-API-KEY: $admin_key" -X PUT -d '
-{
-  "id": "route-test-client-b",
-  "uri": "/eureka/test-client-b/*",
-  "upstream": {
-    "service_name": "TEST-CLIENT-B",
-    "discovery_type": "eureka",
-    "type": "roundrobin"
-  }
-}'
-
 ```
 
 
